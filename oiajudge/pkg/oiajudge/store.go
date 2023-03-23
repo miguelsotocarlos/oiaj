@@ -217,13 +217,13 @@ func GetSubmissions(tx store.Transaction, uid Id, tid Id) ([]bridge.Submission, 
 }
 
 func GetTasks(tx store.Transaction) (tasks []bridge.Task, err error) {
-	row, err := tx.Query("SELECT name, title, max_score, multiplier FROM oia_task")
+	row, err := tx.Query("SELECT id, name, title, max_score, multiplier FROM oia_task")
 	if err != nil {
 		return
 	}
 	for row.Next() {
 		var task bridge.Task
-		err = row.Scan(&task.Name, &task.Title, &task.MaxScore, &task.Multiplier)
+		err = row.Scan(&task.Id, &task.Name, &task.Title, &task.MaxScore, &task.Multiplier)
 		if err != nil {
 			return
 		}
