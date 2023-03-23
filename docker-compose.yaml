@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  app:
+    container_name: oiaj
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    volumes:
+      - .:/workspaces/oiajudge
+      - ./scripts/src/oia:/root/install/oia-scripts/src/oia
+      - ./cms/cms.conf:/usr/local/etc/cms.conf
+
+    # required for isolate
+    privileged: true
+
+    # Runs app on the same network as the database container
+    network_mode: service:db
+
+  db:
+    container_name: oiaj-db
+    image: postgres:latest
+    restart: unless-stopped
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_DB: postgres
+      POSTGRES_PASSWORD: postgres
+
+volumes:
+  postgres-data:

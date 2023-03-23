@@ -1,0 +1,242 @@
+package oiajudge
+
+import (
+	"crypto/rand"
+	"crypto/subtle"
+	"encoding/base64"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"strconv"
+	"strings"
+
+	"github.com/carlosmiguelsoto/oiajudge/pkg/bridge"
+	"github.com/carlosmiguelsoto/oiajudge/pkg/store"
+)
+
+func CreateUser(tx store.Transaction, email, username string, cms_user_id Id, password_hash []byte) (uid Id, err error) {
+	row := tx.QueryRow("INSERT INTO oia_user(email, username, cms_user_id, password_hash) VALUES ($1, $2, $3, $4) RETURNING id",
+		email, username, cms_user_id, password_hash)
+	err = row.Scan(&uid)
+	if err != nil {
+		return
+	}
+	return
+}
+
+func CreateUserToken(tx store.Transaction, uid Id) (t Token, err error) {
+	secret := make([]byte, 32)
+	_, err = rand.Read(secret)
+	if err != nil {
+		return
+	}
+	row := tx.QueryRow("INSERT INTO oia_tokens(user_id, secret) VALUES ($1, $2) RETURNING id",
+		uid, secret)
+	var id Id
+	err = row.Scan(&id)
+	if err != nil {
+		return
+	}
+	t = Token(fmt.Sprintf("%d:%s", id, base64.StdEncoding.EncodeToString(secret)))
+	return
+}
+
+func CheckUserToken(tx store.Transaction, uid Id, token_s string) error {
+	v := strings.Split(token_s, ":")
+	malformedTokenError := &OiaError{
+		HttpCode: http.StatusBadRequest,
+		Message:  "malformed token",
+	}
+	if len(v) != 2 {
+		return malformedTokenError
+	}
+	token_id := v[0]
+	token_value := v[1]
+	id, err := strconv.ParseInt(token_id, 10, 64)
+	if err != nil {
+		return malformedTokenError
+	}
+	value, err := base64.StdEncoding.DecodeString(token_value)
+	if err != nil {
+		return malformedTokenError
+	}
+
+	row := tx.QueryRow("SELECT secret FROM oia_tokens WHERE id = $1 AND user_id = $2", id, uid)
+	var secret []byte
+	err = row.Scan(&secret)
+	if err != nil {
+		return err
+	}
+	if subtle.ConstantTimeCompare(secret, value) == 0 {
+		return &OiaError{
+			HttpCode: http.StatusForbidden,
+			Message:  "invalid credentials",
+		}
+	}
+	return err
+}
+
+type DbUser struct {
+	Username string
+	Score    float64
+}
+
+func GetUser(tx store.Transaction, uid Id) (user DbUser, err error) {
+	row := tx.QueryRow("SELECT username, score FROM oia_user WHERE id = $1", uid)
+	err = row.Scan(&user.Username, &user.Score)
+	if err != nil {
+		return
+	}
+	return
+}
+
+func CreateSubmission(tx store.Transaction, submission bridge.Submission) error {
+	if submission.Deleted {
+		_, err := tx.Exec("DELETE FROM oia_submissions WHERE id = $1", submission.Id)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+
+	data, err := json.Marshal(submission)
+	if err != nil {
+		return err
+	}
+
+	subtask_details := make([]float64, 0)
+	if submission.Result != nil {
+		for _, subtask := range submission.Result.Subtasks {
+			subtask_details = append(subtask_details, subtask.Score.Score)
+		}
+	}
+	subtask_details_data, err := json.Marshal(subtask_details)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(`
+		INSERT INTO oia_submissions(id, user_id, task_id, details, subtask_details)
+		VALUES ($4, $1, $2, $3, $5)
+		ON CONFLICT(id) DO UPDATE SET
+			details=EXCLUDED.details,
+			subtask_details=EXCLUDED.subtask_details`,
+		submission.UserId, submission.ProblemId, data, submission.Id, subtask_details_data)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func GetAllScores(tx store.Transaction, uid Id, tid Id) (v [][]float64, err error) {
+	rows, err := tx.Query("SELECT subtask_details from oia_submissions WHERE user_id = $1 AND task_id = $2", uid, tid)
+	if err != nil {
+		return
+	}
+	for rows.Next() {
+		var json_arr string
+		err = rows.Scan(&json_arr)
+		if err != nil {
+			return
+		}
+		subtask_scores := make([]float64, 0)
+		err = json.Unmarshal([]byte(json_arr), &subtask_scores)
+		if err != nil {
+			return
+		}
+		v = append(v, subtask_scores)
+	}
+	return
+}
+
+func SaveUserScore(tx store.Transaction, uid Id, tid Id, score float64) (err error) {
+	row := tx.QueryRow("SELECT multiplier FROM oia_task WHERE oia_task.id = $1", tid)
+	var multiplier float64
+	err = row.Scan(&multiplier)
+	if store.IsNoRows(err) {
+		multiplier = 1
+	}
+	_, err = tx.Exec("INSERT INTO oia_task_score(user_id, task_id, score) VALUES ($1, $2, $3) ON CONFLICT (user_id, task_id) DO UPDATE SET score=EXCLUDED.score", uid, tid, score)
+	if err != nil {
+		return
+	}
+	return
+}
+
+func GetUserTaskScore(tx store.Transaction, uid, tid Id) (float64, error) {
+	row := tx.QueryRow("SELECT score FROM oia_task_score WHERE user_id = $1 AND task_id = $2", uid, tid)
+	var score float64
+	err := row.Scan(&score)
+	if store.IsNoRows(err) {
+		return 0, nil
+	}
+	if err != nil {
+		return 0, err
+	}
+	return score, nil
+}
+
+func IncrementUserScore(tx store.Transaction, uid Id, delta float64) error {
+	_, err := tx.Exec("UPDATE oia_user SET score = score + $1 WHERE id = $2", delta, uid)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func SaveTask(tx store.Transaction, task bridge.Task) (err error) {
+	_, err = tx.Exec("INSERT INTO oia_task(id, title, name, statement, max_score, multiplier) VALUES ($1, $2, $3, $4, $5, $6)", task.Id, task.Title, task.Name, task.Statement, task.MaxScore, task.Multiplier)
+	if err != nil {
+		return
+	}
+	return
+}
+
+func GetSubmissions(tx store.Transaction, uid Id, tid Id) ([]bridge.Submission, error) {
+	rows, err := tx.Query("SELECT details FROM oia_submissions WHERE user_id=$1 AND task_id=$2", uid, tid)
+	if err != nil {
+		return nil, err
+	}
+	res := make([]bridge.Submission, 0)
+	for rows.Next() {
+		var details string
+		err = rows.Scan(&details)
+		if err != nil {
+			return nil, err
+		}
+
+		var submission bridge.Submission
+		err = json.Unmarshal([]byte(details), &submission)
+		if err != nil {
+			return nil, err
+		}
+
+		res = append(res, submission)
+	}
+	return res, nil
+}
+
+func GetTasks(tx store.Transaction) (tasks []bridge.Task, err error) {
+	row, err := tx.Query("SELECT name, title, max_score, multiplier FROM oia_task")
+	if err != nil {
+		return
+	}
+	for row.Next() {
+		var task bridge.Task
+		err = row.Scan(&task.Name, &task.Title, &task.MaxScore, &task.Multiplier)
+		if err != nil {
+			return
+		}
+		tasks = append(tasks, task)
+	}
+	return
+}
+
+func GetTaskStatement(tx store.Transaction, tid Id) (statement []byte, err error) {
+	row := tx.QueryRow("SELECT statement FROM oia_task WHERE id = $1", tid)
+	err = row.Scan(&statement)
+	if err != nil {
+		return
+	}
+	return
+}
