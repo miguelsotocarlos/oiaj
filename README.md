@@ -8,3 +8,5 @@ The only prerequisite is a working `docker` installation
 3. Enter the running container `docker exec -it oiaj bash`
 4. Start the services (inside the container): `oia up`
 
+## API
+The API can be accessed at `localhost:1367` after starting the services
