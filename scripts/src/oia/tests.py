@@ -1,6 +1,7 @@
 import base64
 import time
 import unittest
+from zipfile import ZipFile
 
 from oia.services import Database, Cms, Oia, All
 from oia.config import Config
@@ -105,3 +106,9 @@ class OiaTests(unittest.TestCase):
         task = Oia.post('/task/get', json={}).json()["tasks"][0]
         self.assertEqual(task["name"], "envido")
         self.assertEqual(task["max_score"], 2)
+
+        task_statement = Oia.get(f'/task/statement/{task["id"]}').content
+
+        task_zip = ZipFile(Config.TASK_PATH / 'envido.zip')
+        actual_statement = task_zip.read('envido.pdf')
+        self.assertEqual(task_statement, actual_statement)
