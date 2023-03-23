@@ -28,6 +28,8 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_DB: postgres
       POSTGRES_PASSWORD: postgres
+    ports:
+      - "1367:1367"
 
 volumes:
   postgres-data:
