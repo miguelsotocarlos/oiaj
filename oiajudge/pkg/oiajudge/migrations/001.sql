@@ -39,8 +39,10 @@ CREATE TABLE IF NOT EXISTS oia_task (
     title TEXT NOT NULL,
     name TEXT NOT NULL,
     statement BYTEA NOT NULL,
-    max_score REAL,
-    multiplier REAL
+    max_score REAL NOT NULL,
+    submission_format TEXT[] NOT NULL,
+    tags TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+    multiplier REAL NOT NULL DEFAULT 1
 )
 
 ;;

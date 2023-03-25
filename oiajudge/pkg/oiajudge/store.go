@@ -185,7 +185,17 @@ func IncrementUserScore(tx store.Transaction, uid Id, delta float64) error {
 }
 
 func SaveTask(tx store.Transaction, task bridge.Task) (err error) {
-	_, err = tx.Exec("INSERT INTO oia_task(id, title, name, statement, max_score, multiplier) VALUES ($1, $2, $3, $4, $5, $6)", task.Id, task.Title, task.Name, task.Statement, task.MaxScore, task.Multiplier)
+	_, err = tx.Exec(`
+		INSERT INTO oia_task(id, title, name, statement, max_score, multiplier, submission_format)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		ON CONFLICT(id) DO UPDATE SET
+			title = EXCLUDED.title,
+			name = EXCLUDED.name,
+			statement = EXCLUDED.statement,
+			max_score = EXCLUDED.max_score,
+			multiplier = EXCLUDED.multiplier,
+			submission_format = EXCLUDED.submission_format;`,
+		task.Id, task.Title, task.Name, task.Statement, task.MaxScore, task.Multiplier, task.SubmissionFormat)
 	if err != nil {
 		return
 	}
@@ -217,13 +227,13 @@ func GetSubmissions(tx store.Transaction, uid Id, tid Id) ([]bridge.Submission, 
 }
 
 func GetTasks(tx store.Transaction) (tasks []bridge.Task, err error) {
-	row, err := tx.Query("SELECT id, name, title, max_score, multiplier FROM oia_task")
+	row, err := tx.Query("SELECT id, name, title, max_score, multiplier, submission_format, tags FROM oia_task")
 	if err != nil {
 		return
 	}
 	for row.Next() {
 		var task bridge.Task
-		err = row.Scan(&task.Id, &task.Name, &task.Title, &task.MaxScore, &task.Multiplier)
+		err = row.Scan(&task.Id, &task.Name, &task.Title, &task.MaxScore, &task.Multiplier, &task.SubmissionFormat, &task.Tags)
 		if err != nil {
 			return
 		}

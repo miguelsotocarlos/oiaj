@@ -106,6 +106,8 @@ class OiaTests(unittest.TestCase):
         task = Oia.post('/task/get', json={}).json()["tasks"][0]
         self.assertEqual(task["name"], "envido")
         self.assertEqual(task["max_score"], 2)
+        self.assertEqual(task["tags"], [])
+        self.assertEqual(task["submission_format"], ["envido.%l"])
 
         task_statement = Oia.get(f'/task/statement/{task["id"]}').content
 
