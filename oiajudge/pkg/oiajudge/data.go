@@ -27,3 +27,8 @@ func (oe *OiaError) Error() string {
 type Authenticatable interface {
 	Uid() Id
 }
+
+type Config struct {
+	OiaDbConnectionString string
+	OiaServerPort         int64
+}

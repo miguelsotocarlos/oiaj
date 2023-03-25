@@ -7,6 +7,53 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+type MakeSubmissionQuery struct {
+	Task Id `json:"task_id"`
+	User Id `json:"user_id"`
+
+	// Submissions can have many files, indexed by filename
+	Sources map[string][]byte `json:"sources"`
+}
+
+func (q MakeSubmissionQuery) Uid() Id {
+	return q.User
+}
+
+type MakeSubmissionResponse struct {
+	Submission Id `json:"submission"`
+}
+
+func (s *Server) MakeSubmission(ctx context.Context, q MakeSubmissionQuery) (r MakeSubmissionResponse, err error) {
+	err = s.Bridge.MakeSubmission(ctx, q.User, q.Task, q.Sources)
+	if err != nil {
+		return
+	}
+	return
+}
+
+type GetSubmissionsQuery struct {
+	Task Id `json:"task_id"`
+	User Id `json:"user_id"`
+}
+
+type GetSubmissionsResponse struct {
+	Submissions []bridge.Submission `json:"submissions"`
+}
+
+func (s *Server) GetSubmissions(ctx context.Context, q GetSubmissionsQuery) (r GetSubmissionsResponse, err error) {
+	tx, err := s.Db.Tx(ctx)
+	if err != nil {
+		return
+	}
+	defer tx.Close(&err)
+	submissions, err := GetSubmissions(*tx, q.User, q.Task)
+	if err != nil {
+		return
+	}
+	r.Submissions = submissions
+	return
+}
+
 type CreateUserQuery struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
