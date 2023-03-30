@@ -1,12 +1,8 @@
 package cmsbridge
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
-	"fmt"
 	"log"
-	"net/http"
 
 	"github.com/carlosmiguelsoto/oiajudge/pkg/bridge"
 )
@@ -95,23 +91,15 @@ type SubmitQuery struct {
 	Language string            `json:"language"`
 }
 
-func (b *CmsBridge) MakeSubmission(ctx context.Context, uid bridge.Id, task_id bridge.Id, sources map[string][]byte) error {
-	payload, err := json.Marshal(SubmitQuery{
-		Uid:      uid,
-		Task:     task_id,
-		Files:    sources,
-		Language: "C++11 / g++",
-	})
+func (b *CmsBridge) MakeSubmission(ctx context.Context, uid bridge.Id, task_id bridge.Id, sources map[string][]byte) (err error) {
+	tx, err := b.Db.Tx(ctx)
 	if err != nil {
-		return err
+		return
 	}
-	resp, err := http.Post(fmt.Sprintf("%s/%s", b.Config.CmsBridgeAddress, "/submit"), "text/json", bytes.NewReader(payload))
+	defer tx.Close(&err)
+	err = MakeSubmission(*tx, b.Config.CmsContestId, uid, task_id, sources)
 	if err != nil {
-		return err
+		return
 	}
-	defer resp.Body.Close()
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return fmt.Errorf("MakeSubmission(): status code %d", resp.StatusCode)
-	}
-	return nil
+	return
 }

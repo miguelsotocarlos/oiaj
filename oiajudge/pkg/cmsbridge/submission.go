@@ -1,15 +1,20 @@
 package cmsbridge
 
 import (
+	"crypto/sha1"
 	"database/sql"
+	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"log"
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/carlosmiguelsoto/oiajudge/pkg/bridge"
 	"github.com/carlosmiguelsoto/oiajudge/pkg/store"
+	"github.com/jackc/pgx/v5"
 )
 
 func GetSubmission(tx store.Transaction, id bridge.Id) (submission *bridge.Submission, err error) {
@@ -196,5 +201,77 @@ func FillTestcaseResults(tx store.Transaction, submission *bridge.Submission) (e
 	sort.Slice(submission.Result.Testcases, func(i, j int) bool {
 		return submission.Result.Testcases[i].Testcase < submission.Result.Testcases[j].Testcase
 	})
+	return
+}
+
+func AddFsObject(tx store.Transaction, content []byte, description string) (string, error) {
+	hasher := sha1.New()
+	_, err := hasher.Write(content)
+	if err != nil {
+		return "", err
+	}
+	digest := hex.EncodeToString(hasher.Sum([]byte{}))
+	rows, err := tx.Query("SELECT digest FROM fsobjects WHERE digest = $1", digest)
+	if err != nil {
+		return "", err
+	}
+	if rows.Next() {
+		// Data already in the DB
+		return digest, nil
+	}
+
+	lo := tx.Tx.LargeObjects()
+	oid, err := lo.Create(tx.Ctx, 0)
+	if err != nil {
+		return "", err
+	}
+	fs, err := lo.Open(tx.Ctx, oid, pgx.LargeObjectModeWrite)
+	if err != nil {
+		return "", err
+	}
+	defer fs.Close()
+	fs.Write(content)
+	if err != nil {
+		return "", err
+	}
+
+	_, err = tx.Exec("INSERT INTO fsobjects (digest, loid, description) VALUES ($1, $2, $3)", digest, oid, description)
+	if err != nil {
+		return "", err
+	}
+
+	return digest, nil
+}
+
+func MakeSubmission(tx store.Transaction, cid bridge.Id, uid bridge.Id, task_id bridge.Id, sources map[string][]byte) (err error) {
+	language := "C++11 / g++"
+
+	submission_time := time.Now()
+
+	row := tx.QueryRow(`
+	INSERT INTO submissions
+		(participation_id, task_id, timestamp, language, comment, official)
+		VALUES (
+			(SELECT id FROM participations WHERE user_id = $1 AND contest_id = $2),
+			$3, $4, $5, '', $6
+		) RETURNING id`, uid, cid, task_id, submission_time, language, true)
+
+	var sid int64
+	err = row.Scan(&sid)
+	if err != nil {
+		return
+	}
+
+	for filename, content := range sources {
+		var digest string
+		digest, err = AddFsObject(tx, content, fmt.Sprintf("Submission file %s sent by %d at %d.", filename, uid, submission_time.Unix()))
+		if err != nil {
+			return
+		}
+		_, err = tx.Exec("INSERT INTO files (submission_id, filename, digest) VALUES ($1, $2, $3)", sid, filename, digest)
+		if err != nil {
+			return
+		}
+	}
 	return
 }

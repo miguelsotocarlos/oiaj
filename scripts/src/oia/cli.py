@@ -44,13 +44,6 @@ def _(*testnames):
     tests.run_tests(testnames)
 
 
-@command("bridge reinstall")
-def _():
-    utils.run(
-        "cp /workspaces/oiajudge/cms/cmsBridge.py /home/cms/cmscontrib/AddSubmission.py")
-    utils.run("python3 setup.py install", cwd="/home/cms")
-
-
 def is_prefix(a, b):
     if len(a) > len(b):
         return False

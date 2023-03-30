@@ -37,10 +37,6 @@ RUN sed -i '30 i from .argentina_loader import ArgLoader' /home/cms/cmscontrib/l
 RUN sed -i '40 i LOADERS[ArgLoader.short_name] = ArgLoader' /home/cms/cmscontrib/loaders/__init__.py
 COPY cms/argentina_loader.py /home/cms/cmscontrib/loaders/
 
-# Custom http server to send submission
-# replaces the existing cmsAddSubmission utility
-COPY cms/cmsBridge.py /home/cms/cmscontrib/AddSubmission.py
-
 # Build and install CMS
 RUN python3 prerequisites.py --as-root build
 RUN python3 prerequisites.py --as-root install
