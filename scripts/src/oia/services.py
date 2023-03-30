@@ -110,8 +110,6 @@ class CmsService:
     def start(self):
         utils.run_in_screen('resource', "cmsResourceService -a ALL")
         utils.run_in_screen('log', "cmsLogService")
-        utils.run_in_screen('bridge', "cmsAddSubmission", env=Config.env)
-        wait_for_service(lambda: requests.get('http://localhost:1366/health'))
 
     def init_db(self):
         utils.run("cmsInitDB")
