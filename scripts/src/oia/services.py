@@ -102,7 +102,7 @@ class DatabaseService:
         Database.clear()
         Cms.init_db()
         Cms.add_empty_contest()
-        Cms.add_task(Config.TASK_PATH / 'envido.zip')
+        Cms.add_task(Config.TASK_PATH / 'envido')
         Database.save()
 
 
@@ -126,9 +126,8 @@ class CmsService:
         task_dir = str(task_dir)
         utils.run('rm /tmp/imported -r')
         utils.run('mkdir -p /tmp/imported')
-        utils.run(f"cp {utils.esc(task_dir)} /tmp/imported/task.zip")
+        utils.run(f"cp -r {utils.esc(task_dir)}/* /tmp/imported/")
         utils.run("chown -R cmsuser /tmp/imported")
-        utils.run("unzip /tmp/imported/task.zip -d /tmp/imported")
         utils.run("cmsImportTask -c 1 -L argentina /tmp/imported")
 
 

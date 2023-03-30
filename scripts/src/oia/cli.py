@@ -1,5 +1,4 @@
 from oia.config import Config
-import oia.utils as utils
 import oia.tests as tests
 import sys
 
