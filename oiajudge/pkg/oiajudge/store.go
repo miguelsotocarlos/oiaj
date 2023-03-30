@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -149,18 +150,26 @@ func GetAllScores(tx store.Transaction, uid Id, tid Id) (v [][]float64, err erro
 	return
 }
 
-func SaveUserScore(tx store.Transaction, uid Id, tid Id, score float64) (err error) {
+func SaveUserScore(tx store.Transaction, uid Id, tid Id, score float64) (float64, error) {
 	row := tx.QueryRow("SELECT multiplier FROM oia_task WHERE oia_task.id = $1", tid)
 	var multiplier float64
-	err = row.Scan(&multiplier)
+	err := row.Scan(&multiplier)
 	if store.IsNoRows(err) {
+		log.Panicf("Processing submission with unkown task. Assumming multiplier = 1.")
 		multiplier = 1
 	}
-	_, err = tx.Exec("INSERT INTO oia_task_score(user_id, task_id, score) VALUES ($1, $2, $3) ON CONFLICT (user_id, task_id) DO UPDATE SET score=EXCLUDED.score", uid, tid, score)
+	_, err = tx.Exec(`
+		INSERT INTO oia_task_score(user_id, task_id, score, base_score)
+		VALUES ($1, $2, $3, $4)
+		ON CONFLICT (user_id, task_id)
+		DO UPDATE SET
+			score=EXCLUDED.score,
+			base_score=EXCLUDED.base_score
+		`, uid, tid, score*multiplier, score)
 	if err != nil {
-		return
+		return 0, err
 	}
-	return
+	return score * multiplier, nil
 }
 
 func GetUserTaskScore(tx store.Transaction, uid, tid Id) (float64, error) {
@@ -186,16 +195,17 @@ func IncrementUserScore(tx store.Transaction, uid Id, delta float64) error {
 
 func SaveTask(tx store.Transaction, task bridge.Task) (err error) {
 	_, err = tx.Exec(`
-		INSERT INTO oia_task(id, title, name, statement, max_score, multiplier, submission_format)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		INSERT INTO oia_task(id, title, name, statement, max_score, multiplier, submission_format, tags)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		ON CONFLICT(id) DO UPDATE SET
 			title = EXCLUDED.title,
 			name = EXCLUDED.name,
 			statement = EXCLUDED.statement,
 			max_score = EXCLUDED.max_score,
 			multiplier = EXCLUDED.multiplier,
+			tags = EXCLUDED.tags,
 			submission_format = EXCLUDED.submission_format;`,
-		task.Id, task.Title, task.Name, task.Statement, task.MaxScore, task.Multiplier, task.SubmissionFormat)
+		task.Id, task.Title, task.Name, task.Statement, task.MaxScore, task.Multiplier, task.SubmissionFormat, task.Tags)
 	if err != nil {
 		return
 	}

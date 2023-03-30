@@ -51,6 +51,7 @@ CREATE TABLE IF NOT EXISTS oia_task_score (
     user_id BIGINT,
     task_id BIGINT,
     score REAL,
+    base_score REAL,
     PRIMARY KEY (user_id, task_id),
     CONSTRAINT fk_user_id
         FOREIGN KEY(user_id)

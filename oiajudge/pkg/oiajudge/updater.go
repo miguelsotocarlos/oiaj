@@ -23,19 +23,19 @@ func (s *Server) recalculateUserScoreForTask(tx store.Transaction, uid Id, tid I
 			by_subtask[i] = math.Max(by_subtask[i], v[i])
 		}
 	}
-	total_score := float64(0)
+	base_score := float64(0)
 	for _, v := range by_subtask {
-		total_score += v
+		base_score += v
 	}
 	previous_score, err := GetUserTaskScore(tx, uid, tid)
 	if err != nil {
 		return err
 	}
-	err = SaveUserScore(tx, uid, tid, total_score)
+	score, err := SaveUserScore(tx, uid, tid, base_score)
 	if err != nil {
 		return err
 	}
-	err = IncrementUserScore(tx, uid, total_score-previous_score)
+	err = IncrementUserScore(tx, uid, score-previous_score)
 	if err != nil {
 		return err
 	}

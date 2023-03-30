@@ -334,7 +334,12 @@ class ArgLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
 
         args = {}
         args["task"] = task
-        args["description"] = "Default"
+
+        # We package the oiaj-specific attributes (like score multiplier)
+        # and the tags into a json and store it in the description tag
+        # to avoid changing the CMS schema.
+        args["description"] = json.dumps(get_with_default(config, "oiaj", dict()))
+
         args["autojudge"] = True
 
         args["time_limit"] = 1.0

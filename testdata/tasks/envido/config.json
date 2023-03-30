@@ -2,5 +2,9 @@
     "name": "envido",
     "title": "¡Falta envido!",
     "score_type": "Sum",
-    "score_parameters": 1
+    "score_parameters": 1,
+    "oiaj": {
+        "tags": ["año:2023", "certamen:selectivo"],
+        "multiplier": 4
+    }
 }

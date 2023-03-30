@@ -3,16 +3,22 @@ package cmsbridge
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"strconv"
 
 	"github.com/carlosmiguelsoto/oiajudge/pkg/bridge"
 	"github.com/carlosmiguelsoto/oiajudge/pkg/store"
 )
 
+type OiajTaskEmbeddedData struct {
+	Tags       []string
+	Multiplier float64
+}
+
 func GetTask(tx store.Transaction, taskId bridge.Id) (task *bridge.Task, err error) {
 	task = &bridge.Task{}
 	row := tx.QueryRow(`
-		SELECT name, title, score_type, score_type_parameters, datasets.id, submission_format
+		SELECT name, title, score_type, score_type_parameters, datasets.id, submission_format, datasets.description
 		FROM tasks
 		INNER JOIN datasets ON datasets.task_id = tasks.id
 		WHERE tasks.id = $1
@@ -21,12 +27,23 @@ func GetTask(tx store.Transaction, taskId bridge.Id) (task *bridge.Task, err err
 	var score_type string
 	var score_parameters string
 	var dataset_id bridge.Id
-	err = row.Scan(&task.Name, &task.Title, &score_type, &score_parameters, &dataset_id, &task.SubmissionFormat)
+	var description string
+	err = row.Scan(&task.Name, &task.Title, &score_type, &score_parameters, &dataset_id, &task.SubmissionFormat, &description)
 	if err != nil {
 		return
 	}
 
-	task.Multiplier = 1
+	var embedded_data OiajTaskEmbeddedData
+	err = json.Unmarshal([]byte(description), &embedded_data)
+	if err != nil {
+		log.Printf("Invalid embedded data: %s", description)
+		task.Multiplier = 1
+		task.Tags = make([]string, 0)
+	} else {
+		task.Multiplier = embedded_data.Multiplier
+		task.Tags = embedded_data.Tags
+	}
+
 	switch score_type {
 	case "Sum":
 		var multiplier float64

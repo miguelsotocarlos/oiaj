@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"sort"
 	"strconv"
 	"time"
 
@@ -80,7 +81,19 @@ func GetNotificationChannel(ctx context.Context, db *store.DBClient) (chan bridg
 			events <- bridge.Event{Error: err}
 			return
 		}
+
 		evs, err := GetNotifications(*tx)
+
+		// Always process tasks first, so submissions are processed after the
+		// associated task
+		priority := map[string]int{
+			"task":       0,
+			"submission": 1,
+		}
+		sort.Slice(evs, func(i int, j int) bool {
+			return priority[evs[i].EventType] < priority[evs[j].EventType]
+		})
+
 		tx.Close(&err)
 		if err != nil {
 			events <- bridge.Event{Error: err}

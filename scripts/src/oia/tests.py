@@ -95,7 +95,8 @@ class OiaTests(unittest.TestCase):
         self.assertEqual(submission["result"]["score"], {"score": 2, "max_score": 2})
 
         resp = Oia.post(f'/user/get', json={"user_id": uid}).json()
-        self.assertEqual(resp["score"], 2)
+        # max_score * score_multiplier
+        self.assertEqual(resp["score"], 8)
 
     def test_get_task(self):
         def task_ready():
@@ -105,7 +106,7 @@ class OiaTests(unittest.TestCase):
         task = Oia.post('/task/get', json={}).json()["tasks"][0]
         self.assertEqual(task["name"], "envido")
         self.assertEqual(task["max_score"], 2)
-        self.assertEqual(task["tags"], [])
+        self.assertEqual(task["tags"], ['año:2023', 'certamen:selectivo'])
         self.assertEqual(task["submission_format"], ["envido.%l"])
 
         task_statement = Oia.get(f'/task/statement/{task["id"]}').content
