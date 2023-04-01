@@ -18,14 +18,11 @@ def command(prefix):
 def _():
     All.down()
     Oia.build()
-    Database.load_or_else(Database.populate_initial_data)
+    Database.populate_with_contests(['envido', 'frutales'])
     Cms.start()
     Oia.start()
 
 
-@command("db precompute")
-def _():
-    Database.populate_initial_data()
 
 
 @command("db psql")

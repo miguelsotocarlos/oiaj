@@ -1,5 +1,4 @@
 import json
-import os
 from oia.config import Config
 from oia import utils
 import requests
@@ -62,48 +61,20 @@ class OiaService:
 
 
 class DatabaseService:
-    def dump_exists(self, name="dump") -> bool:
-        path = str(Config.DUMP_PATH/f"{name}.sql")
-        try:
-            os.stat(path)
-        except OSError:
-            return False
-        else:
-            return True
-
     def clear(self):
         utils.run('cmsDropDB -y')
-
-    def save(self, name="dump"):
-        os.makedirs(Config.DUMP_PATH, exist_ok=True)
-        path = str(Config.DUMP_PATH/f"{name}.sql")
-        utils.run(f'pg_dump -U postgres -d postgres -h db > {utils.esc(path)}', env={
-            "PGPASSWORD": "postgres"
-        })
-
-    def load(self, name="dump"):
-        self.clear()
-        path = str(Config.DUMP_PATH/f"{name}.sql")
-        utils.run(f'psql -U postgres -d postgres -h db < {utils.esc(path)} > /dev/null', env={
-            "PGPASSWORD": "postgres"
-        })
-
-    def load_or_else(self, compute, name="dump"):
-        if not self.dump_exists(name):
-            compute()
-        self.load(name)
 
     def interact(self):
         utils.run('psql -U postgres -d postgres -h db', env={
             "PGPASSWORD": "postgres"
         })
 
-    def populate_initial_data(self):
+    def populate_with_contests(self, contests):
         Database.clear()
         Cms.init_db()
         Cms.add_empty_contest()
-        Cms.add_task(Config.TASK_PATH / 'envido')
-        Database.save()
+        for contest in contests:
+            Cms.add_task(Config.TASK_PATH / contest)
 
 
 class CmsService:

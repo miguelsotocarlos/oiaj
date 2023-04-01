@@ -30,11 +30,11 @@ class OiaTests(unittest.TestCase):
 
     def setUp(self):
         All.down()
-        Database.load_or_else(Database.populate_initial_data)
-        Oia.start()
         Oia.set_access_token(None)
 
     def test_user_creation(self):
+        Database.populate_with_contests([])
+        Oia.start()
         resp = Oia.post(f'/user/create', json={
             "username": "test_user",
             "password": "test_pass",
@@ -60,8 +60,10 @@ class OiaTests(unittest.TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.json()["username"], "test_user")
 
-    def test_submission(self):
+    def test_submission_envido(self):
+        Database.populate_with_contests(["envido"])
         Cms.start()
+        Oia.start()
 
         with open(Config.TASK_PATH / 'envido.cpp', "rb") as f:
             source = f.read()
@@ -99,6 +101,9 @@ class OiaTests(unittest.TestCase):
         self.assertEqual(resp["score"], 8)
 
     def test_get_task(self):
+        Database.populate_with_contests(["envido"])
+        Oia.start()
+
         def task_ready():
             tasks = Oia.post('/task/get', json={}).json()["tasks"]
             return tasks is not None
