@@ -182,11 +182,16 @@ class ArgLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
 
     def get_checker(self, task):
         checker_src = os.path.join(self.path, "corrector.cpp")
+        checker_compiled = os.path.join(self.path, "checker")
         if os.path.exists(checker_src):
             compile_checker(checker_src)
-            checker_dst = os.path.join(self.path, "checker")
             digest = self.file_cacher.put_file_from_path(
-                checker_dst,
+                checker_compiled,
+                "Manager for task %s" % task.name)
+            return [Manager("checker", digest)], "comparator"
+        elif os.path.exists(checker_compiled):
+            digest = self.file_cacher.put_file_from_path(
+                checker_compiled,
                 "Manager for task %s" % task.name)
             return [Manager("checker", digest)], "comparator"
         else:
@@ -342,8 +347,8 @@ class ArgLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
 
         args["autojudge"] = True
 
-        args["time_limit"] = 1.0
-        args["memory_limit"] = 512
+        args["time_limit"] = get_with_default(config, "time_limit", 1.0)
+        args["memory_limit"] = int(get_with_default(config, "memory_limit", 512))
 
         # Builds the parameters that depend on the task type
         args["managers"] = []
@@ -355,16 +360,23 @@ class ArgLoader(ContestLoader, TaskLoader, UserLoader, TeamLoader):
 
         infile_param = ""  # stdin
         outfile_param = ""  # stdout
-        args["task_type"] = "Batch"
+        args["task_type"] = get_with_default(config, "task_type", "Batch")
 
-        if self.compat():
-            args["task_type_parameters"] = '["%s", ["%s", "%s"], "%s"]' % (compilation_param, infile_param, outfile_param, evaluation_param)
+        if "task_type_parameters" in config:
+            task_type_parameters = config["task_type_parameters"]
+            if type(task_type_parameters) is str:
+                task_type_parameters = json.loads(task_type_parameters)
         else:
-            args["task_type_parameters"] = [
+            task_type_parameters = [
                 compilation_param,
                 [infile_param, outfile_param],
                 evaluation_param,
             ]
+
+        if self.compat():
+            args["task_type_parameters"] = json.dumps(task_type_parameters)
+        else:
+            args["task_type_parameters"] = task_type_parameters
 
         args["testcases"], score_config = self.get_testcases(config, task)
         for t in args["testcases"]:
