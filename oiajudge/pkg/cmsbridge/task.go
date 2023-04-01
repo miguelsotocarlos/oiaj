@@ -60,12 +60,15 @@ func GetTask(tx store.Transaction, taskId bridge.Id) (task *bridge.Task, err err
 		task.MaxScore = multiplier * float64(cases)
 	default:
 		var params [][]interface{}
-		json.Unmarshal([]byte(score_parameters), &params)
+		err = json.Unmarshal([]byte(score_parameters), &params)
+		if err != nil {
+			return
+		}
 		task.MaxScore = 0
 		for _, params := range params {
 			score := params[0]
 			switch score := score.(type) {
-			case int:
+			case float64:
 				task.MaxScore += float64(score)
 			default:
 				err = fmt.Errorf("invalid score type %s", score)
