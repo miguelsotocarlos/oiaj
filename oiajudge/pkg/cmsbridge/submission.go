@@ -82,9 +82,13 @@ func GetSubmission(tx store.Transaction, id bridge.Id) (submission *bridge.Submi
 	}
 	if !evaluation_outcome.Valid {
 		submission.SubmissionStatus = bridge.EVALUATING
-	} else {
-		submission.SubmissionStatus = bridge.SCORED
+		return
 	}
+	if !score_details.Valid || score_details.String == "null" {
+		submission.SubmissionStatus = bridge.SCORING
+		return
+	}
+	submission.SubmissionStatus = bridge.SCORED
 	submission.Result = &bridge.SubmissionResult{}
 
 	FillTestcaseResults(tx, submission)
