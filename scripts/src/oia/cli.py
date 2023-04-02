@@ -36,6 +36,13 @@ def _():
     Database.interact()
 
 
+@command("reinstall")
+def _():
+    utils.run(
+        "cp /workspaces/oiajudge/cms/argentina_loader.py /home/cms/cmscontrib/loaders/argentina_loader.py")
+    utils.run("python3 setup.py install", cwd="/home/cms")
+
+
 @command("db clear")
 def _():
     Database.clear()
