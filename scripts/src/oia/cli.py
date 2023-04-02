@@ -1,8 +1,11 @@
+from pathlib import Path
 from oia.config import Config
 import oia.tests as tests
 import sys
 
 from oia.services import Database, Cms, Oia, All
+import oia.utils as utils
+from oia.converter import convert
 
 COMMANDS = []
 
@@ -23,6 +26,9 @@ def _():
     Oia.start()
 
 
+@command("convert")
+def _(src, dst):
+    convert(Path(src), Path(dst))
 
 
 @command("db psql")
