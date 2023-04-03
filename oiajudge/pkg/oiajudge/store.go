@@ -42,6 +42,16 @@ func CreateUserToken(tx store.Transaction, uid Id) (t Token, err error) {
 	return
 }
 
+func GetUserPasswordAndId(tx store.Transaction, username string) (hash []byte, id Id, err error) {
+	row := tx.QueryRow("SELECT password_hash, id FROM oia_user WHERE username = $1",
+		username)
+	err = row.Scan(&hash, &id)
+	if err != nil {
+		return
+	}
+	return
+}
+
 func CheckUserToken(tx store.Transaction, uid Id, token_s string) error {
 	v := strings.Split(token_s, ":")
 	malformedTokenError := &OiaError{

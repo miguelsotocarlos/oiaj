@@ -2,6 +2,7 @@ package oiajudge
 
 import (
 	"context"
+	"net/http"
 
 	"github.com/carlosmiguelsoto/oiajudge/pkg/bridge"
 	"golang.org/x/crypto/bcrypt"
@@ -83,6 +84,40 @@ func (s *Server) CreateUser(ctx context.Context, q CreateUserQuery) (r CreateUse
 	}
 	uid, err := CreateUser(*tx, q.Email, q.Username, cms_uid, password_hash)
 	if err != nil {
+		return
+	}
+	token, err := CreateUserToken(*tx, uid)
+	if err != nil {
+		return
+	}
+	r.UserId = uid
+	r.Token = token
+	return
+}
+
+type UserLoginQuery struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+type UserLoginResponse struct {
+	UserId Id    `json:"user_id"`
+	Token  Token `json:"token"`
+}
+
+func (s *Server) UserLogin(ctx context.Context, q UserLoginQuery) (r UserLoginResponse, err error) {
+	tx, err := s.Db.Tx(ctx)
+	if err != nil {
+		return
+	}
+	defer tx.Close(&err)
+	hash, uid, err := GetUserPasswordAndId(*tx, q.Username)
+	err = bcrypt.CompareHashAndPassword(hash, []byte(q.Password))
+	if err != nil {
+		err = &OiaError{
+			HttpCode:      http.StatusUnauthorized,
+			InternalError: err,
+		}
 		return
 	}
 	token, err := CreateUserToken(*tx, uid)

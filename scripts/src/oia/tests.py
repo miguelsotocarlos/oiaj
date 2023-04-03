@@ -60,6 +60,24 @@ class OiaTests(unittest.TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.json()["username"], "test_user")
 
+        Oia.set_access_token(None)
+        resp = Oia.post(f'/user/login', json={
+            "username": "test_user",
+            "password": "wrong_pass",
+        })
+        self.assertEqual(resp.status_code, 401)
+
+        resp = Oia.post(f'/user/login', json={
+            "username": "test_user",
+            "password": "test_pass",
+        })
+        self.assertEqual(resp.status_code, 200)
+        Oia.set_access_token(resp.json()["token"])
+
+        resp = Oia.post(f'/user/get', json={"user_id": uid})
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()["username"], "test_user")
+
     def test_submission_envido(self):
         Database.populate_with_contests(["envido"])
         Cms.start()
