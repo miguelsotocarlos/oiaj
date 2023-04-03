@@ -262,6 +262,15 @@ func GetTasks(tx store.Transaction) (tasks []bridge.Task, err error) {
 	return
 }
 
+func GetSingleTask(tx store.Transaction, tid Id) (task bridge.Task, err error) {
+	row := tx.QueryRow("SELECT id, name, title, max_score, multiplier, submission_format, tags FROM oia_task WHERE id = $1", tid)
+	err = row.Scan(&task.Id, &task.Name, &task.Title, &task.MaxScore, &task.Multiplier, &task.SubmissionFormat, &task.Tags)
+	if err != nil {
+		return
+	}
+	return
+}
+
 func GetTaskStatement(tx store.Transaction, tid Id) (statement []byte, err error) {
 	row := tx.QueryRow("SELECT statement FROM oia_task WHERE id = $1", tid)
 	err = row.Scan(&statement)

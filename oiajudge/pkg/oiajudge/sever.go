@@ -171,6 +171,7 @@ func (server *Server) MakeServer() http.Handler {
 	r.HandleFunc("/submissions/get", NoAuth(server, server.GetSubmissions)).Methods("POST")
 	r.HandleFunc("/submission/create", WithUserAuth(server, server.MakeSubmission)).Methods("POST")
 	r.HandleFunc("/task/get", NoAuth(server, server.GetTasks)).Methods("POST")
+	r.HandleFunc("/task/get/single", NoAuth(server, server.GetSingleTask)).Methods("POST")
 
 	r.HandleFunc("/task/statement/{tid}", func(w http.ResponseWriter, r *http.Request) {
 		ServeStatement(w, r, server)

@@ -177,6 +177,28 @@ func (s *Server) GetTasks(ctx context.Context, q GetTasksQuery) (r GetTasksRespo
 	return
 }
 
+type GetSingleTaskQuery struct {
+	Id Id `json:"task_id"`
+}
+
+type GetsingleTaskResponse struct {
+	Task bridge.Task `json:"task"`
+}
+
+func (s *Server) GetSingleTask(ctx context.Context, q GetSingleTaskQuery) (r GetsingleTaskResponse, err error) {
+	tx, err := s.Db.Tx(ctx)
+	if err != nil {
+		return
+	}
+	defer tx.Close(&err)
+	task, err := GetSingleTask(*tx, q.Id)
+	if err != nil {
+		return
+	}
+	r.Task = task
+	return
+}
+
 func (s *Server) GetTaskStatement(ctx context.Context, tid Id) (statement []byte, err error) {
 	tx, err := s.Db.Tx(ctx)
 	if err != nil {
