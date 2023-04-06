@@ -21,7 +21,10 @@ def command(prefix):
 def _():
     All.down()
     Oia.build()
-    Database.populate_with_contests(['envido', 'frutales'])
+    if Config.clear_db:
+        Database.populate_with_contests([])
+    if Config.add_test_data:
+        Database.populate_with_contests(['frutales', 'envido'])
     Cms.start()
     Oia.start()
 

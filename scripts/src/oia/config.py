@@ -11,6 +11,8 @@ class Configuration:
 
         self.debugger = read_with_default('debugger', False)
         self.autostart = read_with_default('autostart', True)
+        self.clear_db = read_with_default('clear-db', False)
+        self.add_test_data = read_with_default('add-test-data', False)
 
 
 Config = Configuration()
