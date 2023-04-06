@@ -220,6 +220,7 @@ func AddFsObject(tx store.Transaction, content []byte, description string) (stri
 		return "", err
 	}
 	if rows.Next() {
+		rows.Close()
 		// Data already in the DB
 		return digest, nil
 	}
