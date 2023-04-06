@@ -29,6 +29,12 @@ def _():
     Oia.start()
 
 
+@command("task add")
+def _(*dirs):
+    for dir in dirs:
+        Cms.add_task(dir)
+
+
 @command("convert")
 def _(src, dst):
     convert(Path(src), Path(dst))
