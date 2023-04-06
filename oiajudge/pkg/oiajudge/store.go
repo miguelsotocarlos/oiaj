@@ -246,6 +246,23 @@ func GetSubmissions(tx store.Transaction, uid Id, tid Id) ([]bridge.Submission, 
 	return res, nil
 }
 
+func GetSubmission(tx store.Transaction, sid Id) (submission bridge.Submission, err error) {
+	rows := tx.QueryRow("SELECT details FROM oia_submissions WHERE id=$1", sid)
+
+	var details string
+	err = rows.Scan(&details)
+	if err != nil {
+		return
+	}
+
+	err = json.Unmarshal([]byte(details), &submission)
+	if err != nil {
+		return
+	}
+
+	return
+}
+
 func GetTasks(tx store.Transaction) (tasks []bridge.Task, err error) {
 	row, err := tx.Query("SELECT id, name, title, max_score, multiplier, submission_format, tags FROM oia_task")
 	if err != nil {

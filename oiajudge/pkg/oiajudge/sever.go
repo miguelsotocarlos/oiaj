@@ -169,6 +169,7 @@ func (server *Server) MakeServer() http.Handler {
 	r.HandleFunc("/user/login", NoAuth(server, server.UserLogin)).Methods("POST")
 	r.HandleFunc("/user/get", WithUserAuth(server, server.GetUser)).Methods("POST")
 	r.HandleFunc("/submissions/get", NoAuth(server, server.GetSubmissions)).Methods("POST")
+	r.HandleFunc("/submissions/get/single", NoAuth(server, server.GetSubmission)).Methods("POST")
 	r.HandleFunc("/submission/create", WithUserAuth(server, server.MakeSubmission)).Methods("POST")
 	r.HandleFunc("/task/get", NoAuth(server, server.GetTasks)).Methods("POST")
 	r.HandleFunc("/task/get/single", NoAuth(server, server.GetSingleTask)).Methods("POST")

@@ -55,6 +55,28 @@ func (s *Server) GetSubmissions(ctx context.Context, q GetSubmissionsQuery) (r G
 	return
 }
 
+type GetSubmissionQuery struct {
+	Submission Id `json:"submission_id"`
+}
+
+type GetSubmissionResponse struct {
+	Submission bridge.Submission `json:"submission"`
+}
+
+func (s *Server) GetSubmission(ctx context.Context, q GetSubmissionQuery) (r GetSubmissionResponse, err error) {
+	tx, err := s.Db.Tx(ctx)
+	if err != nil {
+		return
+	}
+	defer tx.Close(&err)
+	submission, err := GetSubmission(*tx, q.Submission)
+	if err != nil {
+		return
+	}
+	r.Submission = submission
+	return
+}
+
 type CreateUserQuery struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
