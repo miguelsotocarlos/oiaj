@@ -233,3 +233,20 @@ func (s *Server) GetTaskStatement(ctx context.Context, tid Id) (statement []byte
 	}
 	return
 }
+
+type ValidateTokenQuery struct {
+	UserId Id `json:"user_id"`
+}
+
+func (q ValidateTokenQuery) Uid() Id {
+	return q.UserId
+}
+
+type ValidateTokenResponse struct{}
+
+func (s *Server) ValidateToken(ctx context.Context, q ValidateTokenQuery) (r ValidateTokenResponse, err error) {
+	// The API is authenticated, so if the token isn't valid it will
+	// return 401, but if it is it returns 200. We don't need to return
+	// any extra data.
+	return
+}

@@ -48,10 +48,14 @@ class OiaTests(unittest.TestCase):
         # no token
         resp = Oia.post(f'/user/get', json={"user_id": uid})
         self.assertEqual(resp.status_code, 400)
+        resp = Oia.post(f'/token/validate', json={"user_id": uid})
+        self.assertEqual(resp.status_code, 400)
 
         # well-formed but invalid token
         Oia.set_access_token("1:AAAAAQID")
         resp = Oia.post(f'/user/get', json={"user_id": uid})
+        self.assertEqual(resp.status_code, 401)
+        resp = Oia.post(f'/token/validate', json={"user_id": uid})
         self.assertEqual(resp.status_code, 401)
 
         # correct token
@@ -59,6 +63,8 @@ class OiaTests(unittest.TestCase):
         resp = Oia.post(f'/user/get', json={"user_id": uid})
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.json()["username"], "test_user")
+        resp = Oia.post(f'/token/validate', json={"user_id": uid})
+        self.assertEqual(resp.status_code, 200)
 
         Oia.set_access_token(None)
         resp = Oia.post(f'/user/login', json={
