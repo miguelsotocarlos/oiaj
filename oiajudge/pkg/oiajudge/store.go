@@ -16,12 +16,12 @@ import (
 )
 
 func CreateUser(tx store.Transaction, email, username string, cms_user_id Id, password_hash []byte) (uid Id, err error) {
-	row := tx.QueryRow("INSERT INTO oia_user(email, username, cms_user_id, password_hash) VALUES ($1, $2, $3, $4) RETURNING id",
-		email, username, cms_user_id, password_hash)
-	err = row.Scan(&uid)
+	_, err = tx.Exec("INSERT INTO oia_user(id, email, username, password_hash) VALUES ($1, $2, $3, $4)",
+		cms_user_id, email, username, password_hash)
 	if err != nil {
 		return
 	}
+	uid = cms_user_id
 	return
 }
 
