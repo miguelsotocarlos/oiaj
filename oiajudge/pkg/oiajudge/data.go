@@ -2,6 +2,7 @@ package oiajudge
 
 import (
 	"fmt"
+	"time"
 )
 
 type Id = int64
@@ -31,4 +32,6 @@ type Authenticatable interface {
 type Config struct {
 	OiaDbConnectionString string
 	OiaServerPort         int64
+	SubmissionCooldown    time.Duration
+	Debug                 bool
 }

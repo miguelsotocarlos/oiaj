@@ -10,6 +10,8 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync/atomic"
+	"time"
 
 	"github.com/carlosmiguelsoto/oiajudge/pkg/bridge"
 	"github.com/carlosmiguelsoto/oiajudge/pkg/store"
@@ -21,6 +23,8 @@ type Server struct {
 	Bridge bridge.Bridge
 	Config Config
 	Db     store.DBClient
+
+	MockTime atomic.Pointer[time.Time]
 }
 
 func WrongJsonInput(expected_type string, err error) *OiaError {
@@ -179,11 +183,26 @@ func (server *Server) MakeServer() http.Handler {
 		ServeStatement(w, r, server)
 	}).Methods("GET")
 	r.HandleFunc("/health", Health).Methods("GET")
+
+	// Debug APIs
+	if server.Config.Debug {
+		r.HandleFunc("/mock/time/set", NoAuth(server, server.HandleSetMockTime)).Methods("POST")
+		r.HandleFunc("/mock/time/unset", NoAuth(server, server.HandleUnmockTime)).Methods("POST")
+	}
+
 	return r
 }
 
 //go:embed migrations
 var migrations embed.FS
+
+func GetenvIntWithDefault(env string, def int64) int64 {
+	res, err := strconv.ParseInt(os.Getenv(env), 10, 64)
+	if err != nil {
+		return def
+	}
+	return res
+}
 
 func RunServer(ctx context.Context, bridge bridge.Bridge) error {
 	port_string := os.Getenv("OIAJ_SERVER_PORT")
@@ -194,6 +213,8 @@ func RunServer(ctx context.Context, bridge bridge.Bridge) error {
 	config := Config{
 		OiaDbConnectionString: os.Getenv("OIAJ_DB_CONNECTION_STRING"),
 		OiaServerPort:         port,
+		SubmissionCooldown:    time.Millisecond * time.Duration(GetenvIntWithDefault("OIAJ_SUBMISSION_COOLDOWN_MS", 60*1000)),
+		Debug:                 os.Getenv("OIAJ_DEBUG") != "",
 	}
 
 	sql, err := utils.ExtractEmbeddedFsIntoFileMap(migrations, "migrations")

@@ -1,0 +1,2 @@
+ALTER TABLE oia_user
+ADD COLUMN last_submission_ms BIGINT NOT NULL DEFAULT 0

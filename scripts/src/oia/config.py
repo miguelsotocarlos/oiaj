@@ -27,4 +27,5 @@ Config.env = {
     "OIAJ_DB_CONNECTION_STRING": "postgresql://postgres:postgres@db:5432/postgres",
     "OIAJ_SERVER_PORT": "1367",
     "OIAJ_CMS_BRIDGE_ADDRESS": "http://localhost:1366",
+    "OIAJ_DEBUG": "true",
 }

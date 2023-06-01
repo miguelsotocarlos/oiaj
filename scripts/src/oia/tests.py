@@ -84,6 +84,54 @@ class OiaTests(unittest.TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.json()["username"], "test_user")
 
+    def test_submission_cooldown(self):
+        Database.populate_with_contests(["envido"])
+        Cms.start()
+        Oia.start(extra_envs={"OIAJ_SUBMISSION_COOLDOWN_MS": 10*1000})
+
+        resp = Oia.post(f'/user/create', json={
+            "username": "test_user",
+            "password": "test_pass",
+            "school": "escuela",
+            "email": "lala@lala.com",
+            "name": "Carlos",
+        }).json()
+        uid = resp["user_id"]
+        Oia.set_access_token(resp["token"])
+
+        Oia.post(f'/mock/time/set', json={"time": "2000-01-01T00:00:00Z"}, can_fail=False)
+        with open(Config.TASK_PATH / 'envido.cpp', "rb") as f:
+            source = f.read()
+
+        resp = Oia.post(f'/submission/create', json={
+            "task_id": 1,
+            "user_id": uid,
+            "sources": {
+                "envido.%l": base64.b64encode(source).decode('utf-8')
+            }
+        })
+        self.assertEqual(resp.status_code, 200)
+
+        Oia.post(f'/mock/time/set', json={"time": "2000-01-01T00:00:09Z"}, can_fail=False)
+        resp = Oia.post(f'/submission/create', json={
+            "task_id": 1,
+            "user_id": uid,
+            "sources": {
+                "envido.%l": base64.b64encode(source).decode('utf-8')
+            }
+        })
+        self.assertEqual(resp.status_code, 429)
+
+        Oia.post(f'/mock/time/set', json={"time": "2000-01-01T00:00:11Z"}, can_fail=False)
+        resp = Oia.post(f'/submission/create', json={
+            "task_id": 1,
+            "user_id": uid,
+            "sources": {
+                "envido.%l": base64.b64encode(source).decode('utf-8')
+            }
+        })
+        self.assertEqual(resp.status_code, 200)
+
     def test_submission_envido(self):
         Database.populate_with_contests(["envido"])
         Cms.start()

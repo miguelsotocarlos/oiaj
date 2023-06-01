@@ -37,13 +37,20 @@ class OiaService:
     def get(self, url, *args, **kwargs):
         return requests.get(f"{self.url()}{url}", *args, headers=self.make_headers(), **kwargs)
 
-    def post(self, url, *args, **kwargs):
-        return requests.post(f"{self.url()}{url}", *args, headers=self.make_headers(), **kwargs)
+    def post(self, url, can_fail=True, *args, **kwargs):
+        resp = requests.post(f"{self.url()}{url}", *args, headers=self.make_headers(), **kwargs)
+        if not can_fail and (resp.status_code < 200 or resp.status_code >= 300):
+            raise Exception(f"POST {url}, failed ({resp.status_code}): {resp.content}")
+        return resp
 
     def set_access_token(self, token):
         self.token = token
 
-    def start(self):
+    def start(self, extra_envs=None):
+        env_vars = Config.env.copy()
+        if extra_envs is not None:
+            for k in extra_envs:
+                env_vars[k] = str(extra_envs[k])
         if Config.debugger:
             if Config.autostart:
                 run_command = '/go/bin/dlv --listen :5050 --headless=true --continue --log=true --accept-multiclient --api-version=2 exec /workspaces/oiajudge/oiajudge/oiajudge'
@@ -51,7 +58,7 @@ class OiaService:
                 run_command = '/go/bin/dlv --listen :5050 --headless=true --log=true --accept-multiclient --api-version=2 exec /workspaces/oiajudge/oiajudge/oiajudge'
         else:
             run_command = '/workspaces/oiajudge/oiajudge/oiajudge'
-        utils.run_in_screen('oiajudge', run_command, env=Config.env)
+        utils.run_in_screen('oiajudge', run_command, env=env_vars)
 
         wait_for_service(lambda: self.get('/health'))
 

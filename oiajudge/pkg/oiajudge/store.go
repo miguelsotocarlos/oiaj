@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/carlosmiguelsoto/oiajudge/pkg/bridge"
 	"github.com/carlosmiguelsoto/oiajudge/pkg/store"
@@ -99,6 +100,25 @@ func GetUser(tx store.Transaction, uid Id) (user DbUser, err error) {
 		return
 	}
 	return
+}
+
+func LastUserSubmission(tx store.Transaction, uid Id) (t time.Time, err error) {
+	row := tx.QueryRow("SELECT last_submission_ms FROM oia_user WHERE id = $1", uid)
+	var unixms int64
+	err = row.Scan(&unixms)
+	if err != nil {
+		return
+	}
+	t = time.UnixMilli(unixms)
+	return
+}
+
+func SetUserSubmission(tx store.Transaction, uid Id, t time.Time) error {
+	_, err := tx.Exec("UPDATE oia_user SET last_submission_ms = $1 WHERE id = $2", t.UnixMilli(), uid)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func CreateSubmission(tx store.Transaction, submission bridge.Submission) error {

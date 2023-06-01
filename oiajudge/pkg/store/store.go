@@ -13,7 +13,7 @@ import (
 )
 
 type DBClient struct {
-	pool pgxpool.Pool
+	pool *pgxpool.Pool
 }
 
 type Transaction struct {
@@ -132,7 +132,7 @@ func MakeClientWithInitScript(ctx context.Context, url string, init_sql map[stri
 	if err != nil {
 		return
 	}
-	client.pool = *pool
+	client.pool = pool
 
 	tx, err := client.Tx(ctx)
 	if err != nil {

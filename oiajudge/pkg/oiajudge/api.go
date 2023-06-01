@@ -2,7 +2,9 @@ package oiajudge
 
 import (
 	"context"
+	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/carlosmiguelsoto/oiajudge/pkg/bridge"
 	"golang.org/x/crypto/bcrypt"
@@ -25,10 +27,39 @@ type MakeSubmissionResponse struct {
 }
 
 func (s *Server) MakeSubmission(ctx context.Context, q MakeSubmissionQuery) (r MakeSubmissionResponse, err error) {
+	err = CanUserSubmit(s, ctx, q)
+	if err != nil {
+		return
+	}
 	err = s.Bridge.MakeSubmission(ctx, q.User, q.Task, q.Sources)
 	if err != nil {
 		return
 	}
+	return
+}
+
+func CanUserSubmit(s *Server, ctx context.Context, q MakeSubmissionQuery) (err error) {
+	tx, err := s.Db.Tx(ctx)
+	if err != nil {
+		return
+	}
+	defer tx.Close(&err)
+
+	now := s.GetTime()
+	last_submission, err := LastUserSubmission(*tx, q.Uid())
+	if err != nil {
+		return
+	}
+	if last_submission.Add(s.Config.SubmissionCooldown).After(now) {
+		err = fmt.Errorf("wait %v to before retrying", last_submission.Add(s.Config.SubmissionCooldown).Sub(now))
+		err = &OiaError{
+			HttpCode:      http.StatusTooManyRequests,
+			Message:       err.Error(),
+			InternalError: err,
+		}
+		return
+	}
+	SetUserSubmission(*tx, q.Uid(), now)
 	return
 }
 
@@ -248,5 +279,27 @@ func (s *Server) ValidateToken(ctx context.Context, q ValidateTokenQuery) (r Val
 	// The API is authenticated, so if the token isn't valid it will
 	// return 401, but if it is it returns 200. We don't need to return
 	// any extra data.
+	return
+}
+
+// DEBUG APIs
+
+type SetMockTimeQuery struct {
+	Time time.Time `json:"time"`
+}
+
+type SetMockTimeResponse struct{}
+
+func (s *Server) HandleSetMockTime(_ context.Context, q SetMockTimeQuery) (r SetMockTimeResponse, _ error) {
+	s.SetMockTime(q.Time)
+	return
+}
+
+type UnmockTimeQuery struct{}
+
+type UnmockTimeResponse struct{}
+
+func (s *Server) HandleUnmockTime(_ context.Context, q UnmockTimeQuery) (r UnmockTimeResponse, _ error) {
+	s.UnmockTime()
 	return
 }
