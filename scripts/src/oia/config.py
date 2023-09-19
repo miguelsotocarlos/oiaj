@@ -13,6 +13,7 @@ class Configuration:
         self.autostart = read_with_default('autostart', True)
         self.clear_db = read_with_default('clear-db', False)
         self.add_test_data = read_with_default('add-test-data', False)
+        self.git_ref = read_with_default('git-ref', None)
 
 
 Config = Configuration()

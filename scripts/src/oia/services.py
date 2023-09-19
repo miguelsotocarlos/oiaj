@@ -46,18 +46,22 @@ class OiaService:
     def set_access_token(self, token):
         self.token = token
 
-    def start(self, extra_envs=None):
+    def stop(self, extra_envs=None, old_version=False):
+        utils.run('screen -S oiajudge -X quit')
+
+    def start(self, extra_envs=None, old_version=False):
         env_vars = Config.env.copy()
         if extra_envs is not None:
             for k in extra_envs:
                 env_vars[k] = str(extra_envs[k])
+        binary = 'oiajudge_old' if old_version else 'oiajudge'
         if Config.debugger:
             if Config.autostart:
-                run_command = '/go/bin/dlv --listen :5050 --headless=true --continue --log=true --accept-multiclient --api-version=2 exec /workspaces/oiajudge/oiajudge/oiajudge'
+                run_command = f'/go/bin/dlv --listen :5050 --headless=true --continue --log=true --accept-multiclient --api-version=2 exec /workspaces/oiajudge/oiajudge/{binary}'
             else:
-                run_command = '/go/bin/dlv --listen :5050 --headless=true --log=true --accept-multiclient --api-version=2 exec /workspaces/oiajudge/oiajudge/oiajudge'
+                run_command = f'/go/bin/dlv --listen :5050 --headless=true --log=true --accept-multiclient --api-version=2 exec /workspaces/oiajudge/oiajudge/{binary}'
         else:
-            run_command = '/workspaces/oiajudge/oiajudge/oiajudge'
+            run_command = f'/workspaces/oiajudge/oiajudge/{binary}'
         utils.run_in_screen('oiajudge', run_command, env=env_vars)
 
         wait_for_service(lambda: self.get('/health'))

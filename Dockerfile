@@ -55,6 +55,11 @@ RUN wget https://go.dev/dl/go1.20.2.linux-amd64.tar.gz
 RUN rm -rf /usr/local/go && tar -C /usr/local -xzf go1.20.2.linux-amd64.tar.gz
 ENV PATH="${PATH}:/usr/local/go/bin"
 
+RUN apt-get update && export DEBIAN_FRONTEND=noninteractive && \
+    apt-get -y install git
+
+RUN git config --global --add safe.directory /workspaces/oiajudge
+
 USER root
 WORKDIR /workspaces/oiajudge
 CMD sleep infinity

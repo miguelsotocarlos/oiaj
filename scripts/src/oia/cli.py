@@ -1,6 +1,7 @@
 from pathlib import Path
 from oia.config import Config
 import oia.tests as tests
+import oia.migration_tests as migration_tests
 import sys
 
 from oia.services import Database, Cms, Oia, All
@@ -60,6 +61,11 @@ def _():
 @command("test")
 def _(*testnames):
     tests.run_tests(testnames)
+
+
+@command("migration test")
+def _(*testnames):
+    migration_tests.run_tests(testnames)
 
 
 def is_prefix(a, b):

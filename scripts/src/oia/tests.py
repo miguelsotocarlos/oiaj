@@ -1,9 +1,9 @@
 import base64
-import time
 import unittest
 
 from oia.services import Database, Cms, Oia, All
 from oia.config import Config
+import oia.utils as utils
 
 
 def run_tests(tests):
@@ -16,11 +16,6 @@ def run_tests(tests):
             [f"oia.tests.OiaTests.{testname}" for testname in tests]))
     runner = unittest.TextTestRunner()
     runner.run(suite)
-
-
-def wait_for(condition):
-    while not condition():
-        time.sleep(0.01)
 
 
 class OiaTests(unittest.TestCase):
@@ -162,7 +157,7 @@ class OiaTests(unittest.TestCase):
             submissions = Oia.post('/submissions/get', json={"user_id": uid, "task_id": 1}).json()["submissions"]
             return len(submissions) > 0 and submissions[0]["submission_status"] == "scored"
 
-        wait_for(submission_ready)
+        utils.wait_for(submission_ready)
 
         submission = Oia.post('/submissions/get', json={"user_id": uid, "task_id": 1}).json()["submissions"][0]
 
@@ -202,7 +197,7 @@ class OiaTests(unittest.TestCase):
             submissions = Oia.post('/submissions/get', json={"user_id": uid, "task_id": 1}).json()["submissions"]
             return len(submissions) > 0 and submissions[0]["submission_status"] == "scored"
 
-        wait_for(submission_ready)
+        utils.wait_for(submission_ready)
 
         submission = Oia.post('/submissions/get', json={"user_id": uid, "task_id": 1}).json()["submissions"][0]
         print(submission)
@@ -220,7 +215,7 @@ class OiaTests(unittest.TestCase):
         def task_ready():
             tasks = Oia.post('/task/get', json={}).json()["tasks"]
             return tasks is not None
-        wait_for(task_ready)
+        utils.wait_for(task_ready)
         task = Oia.post('/task/get', json={}).json()["tasks"][0]
         self.assertEqual(task["name"], "envido")
         self.assertEqual(task["max_score"], 2)
