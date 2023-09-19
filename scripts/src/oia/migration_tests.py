@@ -1,5 +1,6 @@
 import base64
 import os
+import time
 import unittest
 
 from oia.services import Database, Cms, Oia, All
@@ -28,6 +29,7 @@ class OiaMigrationTests(unittest.TestCase):
         utils.run(f'git checkout {git_ref}')
         Oia.build()
 
+        utils.run(f'git checkout main')
         os.rename(Config.PROJECT_ROOT / 'oiajudge' / 'oiajudge', Config.PROJECT_ROOT / 'oiajudge' / 'oiajudge_old')
         Oia.build()
 
@@ -38,7 +40,7 @@ class OiaMigrationTests(unittest.TestCase):
     def test_submission_permanence(self):
         Database.populate_with_contests(["envido"])
         Cms.start()
-        Oia.start()
+        Oia.start(old_version=True)
 
         with open(Config.TASK_PATH / 'envido.cpp', "rb") as f:
             source = f.read()
@@ -77,9 +79,35 @@ class OiaMigrationTests(unittest.TestCase):
 
         # Now update the server
         Oia.stop()
-        Oia.start(old_version=True)
+        Oia.start()
+
         submission = Oia.post('/submissions/get', json={"user_id": uid, "task_id": 1}).json()["submissions"][0]
         self.assertEqual(submission["result"]["score"], {"score": 2, "max_score": 2})
         resp = Oia.post(f'/user/get', json={"user_id": uid}).json()
         # max_score * score_multiplier
         self.assertEqual(resp["score"], 8)
+
+        time.sleep(10)
+
+        def task_updated():
+            task = Oia.post('/task/get', json={}).json()["tasks"][0]
+            return task["attachments"] != []
+
+        utils.wait_for(task_updated)
+
+        task = Oia.post('/task/get', json={}).json()["tasks"][0]
+        self.assertEqual(task["name"], "envido")
+        self.assertEqual(task["max_score"], 2)
+        self.assertEqual(task["tags"], ['año:2023', 'certamen:selectivo'])
+        self.assertEqual(task["submission_format"], ["envido.%l"])
+        self.assertEqual(set(task["attachments"]), {"envido-cpp.zip", "envido-java.zip"})
+
+        for name in {"envido-cpp.zip", "envido-java.zip"}:
+            resp = Oia.get(f'/task/attachment', params={
+                'task_id': 1,
+                'filename': name
+            })
+            self.assertEqual(resp.status_code, 200)
+            attachment = resp.content
+            actual_attachment = (Config.TASK_PATH / 'envido' / 'kits' / name).read_bytes()
+            self.assertEqual(attachment, actual_attachment)

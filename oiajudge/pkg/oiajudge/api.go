@@ -265,6 +265,10 @@ func (s *Server) GetTaskStatement(ctx context.Context, tid Id) (statement []byte
 	return
 }
 
+func (s *Server) GetAttachment(ctx context.Context, tid Id, filename string) (attachment []byte, err error) {
+	return s.Bridge.GetAttachment(ctx, tid, filename)
+}
+
 type ValidateTokenQuery struct {
 	UserId Id `json:"user_id"`
 }

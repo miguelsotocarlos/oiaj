@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"sort"
 	"strconv"
 
 	"github.com/carlosmiguelsoto/oiajudge/pkg/bridge"
@@ -77,7 +78,30 @@ func GetTask(tx store.Transaction, taskId bridge.Id) (task *bridge.Task, err err
 		}
 	}
 
+	// Get attachments
 	rows, err := tx.Query(`
+			SELECT filename, digest FROM attachments WHERE task_id = $1
+	`, taskId)
+	if err != nil {
+		log.Printf("GetTask(): error getting attachments: %s", err)
+		return
+	}
+	task.Attachments = make([]string, 0)
+	for rows.Next() {
+		var filename string
+		var digest string
+		err = rows.Scan(&filename, &digest)
+		if err != nil {
+			log.Printf("GetTask(): error getting attachment: %s", err)
+			return
+		}
+		task.Attachments = append(task.Attachments, filename)
+	}
+	sort.Slice(task.Attachments, func(i, j int) bool {
+		return task.Attachments[i] < task.Attachments[j]
+	})
+
+	rows, err = tx.Query(`
 			SELECT pg_largeobject.data
 					FROM statements
 					INNER JOIN fsobjects ON statements.digest = fsobjects.digest
@@ -86,7 +110,7 @@ func GetTask(tx store.Transaction, taskId bridge.Id) (task *bridge.Task, err err
 					ORDER BY pg_largeobject.pageno ASC;`,
 		taskId)
 	if err != nil {
-		return
+		log.Printf("GetTask(): error getting statement: %s", err)
 	}
 	var statement []byte
 	for rows.Next() {

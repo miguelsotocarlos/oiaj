@@ -153,6 +153,38 @@ func ServeStatement(w http.ResponseWriter, r *http.Request, server *Server) {
 	w.Header().Add("Content-Type", "application/pdf")
 }
 
+func ServeAttachment(w http.ResponseWriter, r *http.Request, server *Server) {
+	// Get query paramters
+	filename := r.URL.Query().Get("filename")
+	if filename == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("filename is required"))
+		return
+	}
+
+	tid_s := r.URL.Query().Get("task_id")
+	if tid_s == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("task_id is required"))
+		return
+	}
+	tid, err := strconv.ParseInt(tid_s, 10, 64)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("task_id must be an integer"))
+		return
+	}
+	attachment, err := server.GetAttachment(r.Context(), tid, filename)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		// pass the error onto the caller
+		w.Write([]byte(err.Error()))
+		return
+	}
+	w.Write(attachment)
+	w.Header().Add("Content-Type", "application/zip")
+}
+
 func (server *Server) MakeServer() http.Handler {
 	r := mux.NewRouter()
 
@@ -182,6 +214,10 @@ func (server *Server) MakeServer() http.Handler {
 	r.HandleFunc("/task/statement/{tid}", func(w http.ResponseWriter, r *http.Request) {
 		ServeStatement(w, r, server)
 	}).Methods("GET")
+	r.HandleFunc("/task/attachment", func(w http.ResponseWriter, r *http.Request) {
+		ServeAttachment(w, r, server)
+	}).Methods("GET")
+
 	r.HandleFunc("/health", Health).Methods("GET")
 
 	// Debug APIs

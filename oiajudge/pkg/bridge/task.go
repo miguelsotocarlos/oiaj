@@ -10,4 +10,5 @@ type Task struct {
 	MaxScore         float64  `json:"max_score"`
 	Multiplier       float64  `json:"multiplier"`
 	SubmissionFormat []string `json:"submission_format"`
+	Attachments      []string `json:"attachments"`
 }

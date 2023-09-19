@@ -225,8 +225,8 @@ func IncrementUserScore(tx store.Transaction, uid Id, delta float64) error {
 
 func SaveTask(tx store.Transaction, task bridge.Task) (err error) {
 	_, err = tx.Exec(`
-		INSERT INTO oia_task(id, title, name, statement, max_score, multiplier, submission_format, tags)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		INSERT INTO oia_task(id, title, name, statement, max_score, multiplier, submission_format, tags, attachments)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 		ON CONFLICT(id) DO UPDATE SET
 			title = EXCLUDED.title,
 			name = EXCLUDED.name,
@@ -234,8 +234,9 @@ func SaveTask(tx store.Transaction, task bridge.Task) (err error) {
 			max_score = EXCLUDED.max_score,
 			multiplier = EXCLUDED.multiplier,
 			tags = EXCLUDED.tags,
-			submission_format = EXCLUDED.submission_format;`,
-		task.Id, task.Title, task.Name, task.Statement, task.MaxScore, task.Multiplier, task.SubmissionFormat, task.Tags)
+			submission_format = EXCLUDED.submission_format,
+			attachments = EXCLUDED.attachments;`,
+		task.Id, task.Title, task.Name, task.Statement, task.MaxScore, task.Multiplier, task.SubmissionFormat, task.Tags, task.Attachments)
 	if err != nil {
 		return
 	}
@@ -284,13 +285,13 @@ func GetSubmission(tx store.Transaction, sid Id) (submission bridge.Submission, 
 }
 
 func GetTasks(tx store.Transaction) (tasks []bridge.Task, err error) {
-	row, err := tx.Query("SELECT id, name, title, max_score, multiplier, submission_format, tags FROM oia_task")
+	row, err := tx.Query("SELECT id, name, title, max_score, multiplier, submission_format, tags, attachments FROM oia_task")
 	if err != nil {
 		return
 	}
 	for row.Next() {
 		var task bridge.Task
-		err = row.Scan(&task.Id, &task.Name, &task.Title, &task.MaxScore, &task.Multiplier, &task.SubmissionFormat, &task.Tags)
+		err = row.Scan(&task.Id, &task.Name, &task.Title, &task.MaxScore, &task.Multiplier, &task.SubmissionFormat, &task.Tags, &task.Attachments)
 		if err != nil {
 			return
 		}
@@ -300,8 +301,8 @@ func GetTasks(tx store.Transaction) (tasks []bridge.Task, err error) {
 }
 
 func GetSingleTask(tx store.Transaction, tid Id) (task bridge.Task, err error) {
-	row := tx.QueryRow("SELECT id, name, title, max_score, multiplier, submission_format, tags FROM oia_task WHERE id = $1", tid)
-	err = row.Scan(&task.Id, &task.Name, &task.Title, &task.MaxScore, &task.Multiplier, &task.SubmissionFormat, &task.Tags)
+	row := tx.QueryRow("SELECT id, name, title, max_score, multiplier, submission_format, tags, attachments FROM oia_task WHERE id = $1", tid)
+	err = row.Scan(&task.Id, &task.Name, &task.Title, &task.MaxScore, &task.Multiplier, &task.SubmissionFormat, &task.Tags, &task.Attachments)
 	if err != nil {
 		return
 	}

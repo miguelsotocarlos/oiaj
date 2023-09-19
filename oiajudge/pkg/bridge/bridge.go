@@ -17,4 +17,5 @@ type Bridge interface {
 	GetSubmission(ctx context.Context, submission Id) (*Submission, error)
 	GetTask(ctx context.Context, task Id) (*Task, error)
 	MakeSubmission(ctx context.Context, uid Id, task_id Id, sources map[string][]byte) error
+	GetAttachment(ctx context.Context, tid Id, filename string) ([]byte, error)
 }

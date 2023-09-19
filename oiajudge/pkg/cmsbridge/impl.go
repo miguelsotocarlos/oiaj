@@ -103,3 +103,16 @@ func (b *CmsBridge) MakeSubmission(ctx context.Context, uid bridge.Id, task_id b
 	}
 	return
 }
+
+func (b *CmsBridge) GetAttachment(ctx context.Context, tid bridge.Id, filename string) (attachment []byte, err error) {
+	tx, err := b.Db.Tx(ctx)
+	if err != nil {
+		return
+	}
+	defer tx.Close(&err)
+	attachment, err = GetAttachment(*tx, tid, filename)
+	if err != nil {
+		return
+	}
+	return
+}
