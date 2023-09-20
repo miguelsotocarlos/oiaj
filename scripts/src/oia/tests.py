@@ -226,3 +226,38 @@ class OiaTests(unittest.TestCase):
 
         actual_statement = (Config.TASK_PATH / 'envido' / 'envido.pdf').read_bytes()
         self.assertEqual(task_statement, actual_statement)
+
+    def test_submission_envido_compilation_error(self):
+        Database.populate_with_contests(["envido"])
+        Cms.start()
+        Oia.start()
+
+        with open(Config.TASK_PATH / 'envido_compilation_error.cpp', "rb") as f:
+            source = f.read()
+
+        resp = Oia.post(f'/user/create', json={
+            "username": "test_user",
+            "password": "test_pass",
+            "school": "escuela",
+            "email": "lala@lala.com",
+            "name": "Carlos",
+        }).json()
+        uid = resp["user_id"]
+        Oia.set_access_token(resp["token"])
+        resp = Oia.post(f'/submission/create', json={
+            "task_id": 1,
+            "user_id": resp["user_id"],
+            "sources": {
+                "envido.%l": base64.b64encode(source).decode('utf-8')
+            }
+        })
+        self.assertEqual(resp.status_code, 200)
+
+        def submission_ready():
+            submissions = Oia.post('/submissions/get', json={"user_id": uid, "task_id": 1}).json()["submissions"]
+            return len(submissions) > 0 and submissions[0]["submission_status"] == "compilation_failed"
+
+        utils.wait_for(submission_ready)
+
+        submission = Oia.post('/submissions/get', json={"user_id": uid, "task_id": 1}).json()["submissions"][0]
+        self.assertIn('envido.cpp:6:1: error:', submission['compilation_message'])
