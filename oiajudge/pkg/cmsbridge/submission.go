@@ -37,7 +37,7 @@ func GetSubmission(tx store.Transaction, id bridge.Id) (submission *bridge.Submi
 		WHERE submissions.id = $1
 `, id)
 	var compilation_outcome sql.NullString
-	var compilation_stderr string
+	var compilation_stderr sql.NullString
 	var evaluation_outcome sql.NullString
 	var score sql.NullFloat64
 	var score_details sql.NullString
@@ -75,7 +75,7 @@ func GetSubmission(tx store.Transaction, id bridge.Id) (submission *bridge.Submi
 		submission.SubmissionStatus = bridge.COMPILING
 		return
 	}
-	submission.CompilationMessage = compilation_stderr
+	submission.CompilationMessage = compilation_stderr.String
 	if compilation_outcome.String == "fail" {
 		submission.SubmissionStatus = bridge.COMPILATION_FAILED
 		return

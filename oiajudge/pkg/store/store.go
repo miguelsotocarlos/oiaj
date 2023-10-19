@@ -63,11 +63,17 @@ func (db *DBClient) ListenOn(ctx context.Context, channel string) (chan string, 
 }
 
 func (tx *Transaction) Close(func_error *error) (err error) {
-	if tx.Cancel || *func_error != nil {
+	if tx == nil {
+		return nil
+	}
+
+	if tx.Cancel || (func_error != nil && *func_error != nil) {
 		err = tx.Tx.Rollback(tx.Ctx)
 	} else {
 		err = tx.Tx.Commit(tx.Ctx)
-		*func_error = err
+		if func_error != nil {
+			*func_error = err
+		}
 	}
 	if err != nil {
 		return err
